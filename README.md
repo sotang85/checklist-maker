@@ -71,6 +71,12 @@
 - PDF 변환 실패 시에도 빈 체크리스트를 생성하고 모든 항목을 `NEEDS_VERIFICATION`으로 채웁니다.
 - 추출 실패 경고는 UI에 표시되며 로그에 기록됩니다.
 
+## 비용/무료 사용 안내
+- 본 MVP는 **Google Workspace 내 기본 제공 Apps Script + Drive/Sheets 기능만** 사용하므로 **외부 유료 API 비용은 발생하지 않습니다.**
+- 단, 조직의 **Apps Script/Drive 사용량(쿼터)** 에 따라 일시적 제한이 발생할 수 있습니다.
+  - PDF → Google Docs 변환/OCR은 Drive API 기능이며, **별도 과금 없이 쿼터 내에서 동작**합니다.
+  - 쿼터 초과 시 해당 요청은 실패 경고로 처리되고, 체크리스트는 `NEEDS_VERIFICATION`으로 생성됩니다.
+
 ## 테스트
 Apps Script 편집기에서 `TestHarness.runParserTests()` 실행.
 
