@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        margin: 24px;
+      }
+      .container {
+        max-width: 720px;
+      }
+      .field {
+        margin-bottom: 16px;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      input[type="text"],
+      input[type="date"],
+      input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      button {
+        background: #1a73e8;
+        color: #fff;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:disabled {
+        background: #a1c2fa;
+        cursor: default;
+      }
+      .status {
+        margin-top: 20px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 4px;
+      }
+      .warning {
+        color: #b45309;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>구매거래처 체크리스트 자동 생성</h2>
+      <p>업로드한 회사 분석 PDF를 기반으로 체크리스트를 자동 작성합니다.</p>
+
+      <div class="field">
+        <label for="pdfFile">PDF 업로드</label>
+        <input id="pdfFile" type="file" accept="application/pdf" />
+      </div>
+
+      <div class="field">
+        <label for="driveLink">또는 Drive 파일 링크/ID</label>
+        <input id="driveLink" type="text" placeholder="https://drive.google.com/... 또는 파일 ID" />
+      </div>
+
+      <div class="field">
+        <label for="dept">담당부서 (선택)</label>
+        <input id="dept" type="text" />
+      </div>
+
+      <div class="field">
+        <label for="owner">담당자 (선택)</label>
+        <input id="owner" type="text" />
+      </div>
+
+      <div class="field">
+        <label for="startDate">거래시작 예정일 (선택)</label>
+        <input id="startDate" type="date" />
+      </div>
+
+      <button id="generateBtn" onclick="handleGenerate()">체크리스트 생성</button>
+
+      <div id="status" class="status" style="display:none"></div>
+    </div>
+
+    <script>
+      function setStatus(message, warnings) {
+        var status = document.getElementById('status');
+        status.style.display = 'block';
+        status.innerHTML = message;
+        if (warnings && warnings.length) {
+          var warningHtml = '<div class="warning"><strong>Warnings</strong><ul>';
+          warnings.forEach(function(item) {
+            warningHtml += '<li>' + item + '</li>';
+          });
+          warningHtml += '</ul></div>';
+          status.innerHTML += warningHtml;
+        }
+      }
+
+      function handleGenerate() {
+        var button = document.getElementById('generateBtn');
+        button.disabled = true;
+        setStatus('처리 중입니다...');
+
+        var fileInput = document.getElementById('pdfFile');
+        var driveLink = document.getElementById('driveLink').value.trim();
+
+        var metadata = {
+          dept: document.getElementById('dept').value.trim(),
+          owner: document.getElementById('owner').value.trim(),
+          startDate: document.getElementById('startDate').value
+        };
+
+        if (fileInput.files.length === 0 && !driveLink) {
+          setStatus('PDF 파일을 업로드하거나 Drive 링크를 입력해주세요.');
+          button.disabled = false;
+          return;
+        }
+
+        if (fileInput.files.length > 0) {
+          var file = fileInput.files[0];
+          var reader = new FileReader();
+          reader.onloadend = function() {
+            var data = reader.result.split(',')[1];
+            google.script.run
+              .withFailureHandler(function(err) {
+                setStatus('오류가 발생했습니다: ' + err.message);
+                button.disabled = false;
+              })
+              .withSuccessHandler(function(response) {
+                runGeneration(response.fileId, metadata, button);
+              })
+              .uploadPdf(data, file.name);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          runGeneration(extractFileId(driveLink), metadata, button);
+        }
+      }
+
+      function runGeneration(fileId, metadata, button) {
+        google.script.run
+          .withFailureHandler(function(err) {
+            setStatus('오류가 발생했습니다: ' + err.message);
+            button.disabled = false;
+          })
+          .withSuccessHandler(function(response) {
+            var message = 'Done: <a href="' + response.url + '" target="_blank">체크리스트 열기</a>';
+            setStatus(message, response.warnings);
+            button.disabled = false;
+          })
+          .generateChecklist(fileId, metadata);
+      }
+
+      function extractFileId(input) {
+        var match = input.match(/[-\w]{25,}/);
+        return match ? match[0] : input;
+      }
+    </script>
+  </body>
+</html>
